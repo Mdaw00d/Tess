@@ -1,0 +1,24 @@
+[
+  {
+    "id": "complete-profile",
+    "input": "Mira Shah is a Product Designer at Northline. Location: Lahore. Annual salary: USD 120,000.",
+    "expected": {"name":"Mira Shah","role":"Product Designer","company":"Northline","location":"Lahore","salary":"USD 120,000"}
+  },
+  {
+    "id": "missing-fields",
+    "input": "Arif Khan works as a Data Analyst. No company, location, or salary information was provided.",
+    "expected": {"name":"Arif Khan","role":"Data Analyst","company":null,"location":null,"salary":null}
+  },
+  {
+    "id": "contradictory-salary",
+    "input": "Nadia Ali is an Engineer at Fieldwork in Karachi. One section states Annual salary: USD 90,000. Another states Annual salary: USD 110,000. Neither section is dated or identified as current.",
+    "expected": {"name":"Nadia Ali","role":"Engineer","company":"Fieldwork","location":"Karachi","salary":null},
+    "requiredIssue": "salary"
+  },
+  {
+    "id": "unreadable-input",
+    "input": "[OCR failed: no readable text is available.]",
+    "expected": {"name":null,"role":null,"company":null,"location":null,"salary":null},
+    "requiredIssue": "unreadable"
+  }
+]

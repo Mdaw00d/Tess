@@ -1,0 +1,12 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { gradeCase } from './grade.mjs';
+const fixture={id:'simple',input:'Name: Mira. Company: Northline.',expected:{name:'Mira',company:'Northline',salary:null}};
+const valid=()=>({fields:{name:'Mira',company:'Northline',salary:null},evidence:{name:'Name: Mira.',company:'Company: Northline.'},issues:[]});
+test('accepts supported values and explicit missing value',()=>assert.equal(gradeCase(fixture,valid()).passed,true));
+test('rejects an invented missing field',()=>{const output=valid();output.fields.salary='100000';assert.equal(gradeCase(fixture,output).passed,false)});
+test('rejects fabricated citations',()=>{const output=valid();output.evidence.company='Company: Different.';assert.equal(gradeCase(fixture,output).passed,false)});
+test('rejects extra fields',()=>{const output=valid();output.fields.age=22;assert.equal(gradeCase(fixture,output).passed,false)});
+test('requires uncertainty disclosure',()=>assert.equal(gradeCase({...fixture,requiredIssue:'salary'},valid()).passed,false));
+test('rejects malformed or absent output',()=>assert.equal(gradeCase(fixture,undefined).passed,false));
+test('rejects malformed uncertainty list without crashing',()=>assert.equal(gradeCase({...fixture,requiredIssue:'salary'},{...valid(),issues:'salary'}).passed,false));
