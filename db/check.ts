@@ -6,6 +6,7 @@ import { eq, sql } from 'drizzle-orm';
 import * as schema from './schema';
 import { seedLibrary } from './seed-library';
 import { entries, versions } from './schema';
+import { readEvaluations } from './read-evaluations';
 
 const client = await PGlite.create();
 const db = drizzle(client,{schema});
@@ -16,6 +17,20 @@ try {
   await db.transaction(seedLibrary);
   assert.equal((await db.select().from(entries)).length,7,'seed reruns must not duplicate entries');
   assert.equal((await db.select().from(versions)).length,7,'seed reruns must not duplicate versions');
+  const [testedEntry] = await db.select().from(entries).where(eq(entries.slug,'document-extraction'));
+  const [testedVersion] = await db.select().from(versions).where(eq(versions.entryId,testedEntry.id));
+  assert.deepEqual(await readEvaluations(db, testedEntry.slug), []);
+  const [previousVersion] = await db.insert(versions).values({entryId:testedEntry.id,version:'0.0.1',definition:testedVersion.definition}).returning();
+  await db.insert(schema.evaluations).values([
+    {versionId:previousVersion.id,method:'Synthetic database test',results:{passed:true},limitations:'Test data only',evaluatedAt:new Date('2025-01-01')},
+    {versionId:testedVersion.id,method:'Synthetic database test',results:{passed:false},limitations:'Test data only',evaluatedAt:new Date('2025-02-01')},
+  ]);
+  const history = await readEvaluations(db, testedEntry.slug);
+  assert.deepEqual(history.map(record => record.version), ['0.1.0', '0.0.1']);
+  assert.deepEqual(history[0].results, {passed:false}, 'failed results must remain visible');
+  assert.deepEqual(await readEvaluations(db, 'source-research'), [], 'evaluations must not leak between entries');
+  await db.delete(schema.evaluations);
+  await db.delete(versions).where(eq(versions.id,previousVersion.id));
   await db.transaction(async tx => {
     const [entry] = await tx.select().from(entries).where(eq(entries.slug,'document-extraction'));
     const [version] = await tx.select().from(versions).where(eq(versions.entryId,entry.id));
@@ -38,7 +53,7 @@ try {
   assert.ok(policies.every(row=>row.relrowsecurity),'all library tables must enable RLS');
   const {rows:indexes} = await client.query("select indexname from pg_indexes where tablename='entries' and indexname='entries_search_idx'");
   assert.equal(indexes.length,1,'FTS index is present');
-  console.log('PostgreSQL checks passed: migration, idempotent seed, curated-content preservation, FTS stemming, index, and RLS.');
+  console.log('PostgreSQL checks passed: migration, seed, content preservation, version-bound evaluation history, FTS, index, and RLS.');
 } finally {await client.close();}
 
 

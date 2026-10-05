@@ -12,7 +12,7 @@ npm run build validates the production application and TypeScript. npm run typec
 
 Without SUPABASE_DATABASE_URL the application reads seven example drafts from lib/content.ts. With SUPABASE_DATABASE_URL it reads current versions from PostgreSQL and searches using indexed Postgres full-text search. It does not silently fall back if a configured database fails.
 
-See docs/supabase-setup.md for connection, migrations, seeding, and production activation. Commands: npm run db:generate, npm run db:migrate, npm run db:seed. The database integration has not yet been exercised against Supabase.
+See docs/supabase-setup.md for connection, migrations, seeding, and production activation. Commands: npm run db:generate, npm run db:migrate, npm run db:seed. Production migrations, seeding, reads, and full-text search have been verified against Supabase.
 
 See docs/evaluation-plan.md for the next capability-evaluation work. Website tests do not establish agent reliability. All current definitions remain unevaluated.
 
@@ -28,3 +28,5 @@ Run npm run test:db for disposable in-memory PostgreSQL checks using the develop
 
 Run npm run test:eval to test the offline evaluation grader. See evaluations/README.md for capturing actual agent outputs. Grader tests do not establish skill reliability.
 
+
+Evaluation history is read from PostgreSQL and attached to the exact tested version. Current-version record counts do not imply passing results; previous-version records do not establish current-version reliability.
