@@ -6,8 +6,9 @@ import { Copy } from './copy';
 export async function Detail({item}:{item:Definition}) {
   const [related, records] = await Promise.all([getDefinition(item.related), getEvaluations(item.slug)]);
   const currentRecords = records.filter(record => record.version === item.version);
+  const limitations = currentRecords.length ? item.limitations.replace(' No evaluation runs have been recorded.', '') : item.limitations;
   const status = currentRecords.length ? `${currentRecords.length} evaluation records` : 'Not evaluated';
-  const text = JSON.stringify({...item, testingStatus:currentRecords.length ? 'evaluation_recorded' : 'not_evaluated'},null,2);
+  const text = JSON.stringify({...item, limitations, testingStatus:currentRecords.length ? 'evaluation_recorded' : 'not_evaluated'},null,2);
   return <section className="page-shell detail">
     <Link className="back" href={`/${item.kind}s`}>← All {item.kind}s</Link>
     <div className="eyebrow">{item.category.toUpperCase()} / {item.kind.toUpperCase()} / V{item.version}</div>
@@ -17,7 +18,7 @@ export async function Detail({item}:{item:Definition}) {
       <h2>When to use it</h2><p>Use this {item.kind} when you need to {item.description.charAt(0).toLowerCase()+item.description.slice(1)}</p>
       <div className="io"><div><h2>Inputs</h2><ul>{item.inputs.map(s=><li key={s}>{s}</li>)}</ul></div><div><h2>Outputs</h2><ul>{item.outputs.map(s=><li key={s}>{s}</li>)}</ul></div></div>
       <h2>{item.kind==='loop'?'Stages & termination':'Process'}</h2><ol className="process">{item.stages.map(s=><li key={s}>{s}</li>)}</ol>
-      <h2>Evaluation & known limitations</h2><p>{item.limitations}</p>
+      <h2>Evaluation & known limitations</h2><p>{limitations}</p>
       <p>{currentRecords.length ? 'Evaluation records exist for this version. Review their results and limitations before drawing conclusions about reliability.' : `No evaluation records for v${item.version}. This definition describes intended behavior; it does not establish reliability.`}</p>
       <h3>Evaluation history</h3>
       {!records.length && <p>No execution evidence has been recorded.</p>}
