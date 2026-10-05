@@ -7,12 +7,12 @@ import { definitions, definitionSchema, type Definition } from './content';
 
 let connection: ReturnType<typeof createDatabase> | undefined;
 function database() {
-  const url = process.env.DATABASE_URL;
+  const url = process.env.SUPABASE_DATABASE_URL;
   if (!url) return null;
   connection ??= createDatabase(url);
   return connection.db;
 }
-export function databaseEnabled() { return Boolean(process.env.DATABASE_URL); }
+export function databaseEnabled() { return Boolean(process.env.SUPABASE_DATABASE_URL); }
 
 export async function listDefinitions(kind?: Definition['kind'], query = '', category = 'All') {
   const db = database();
@@ -40,3 +40,4 @@ export const getDefinition = cache(async (slug: string) => {
     .where(and(eq(entries.slug, slug), eq(versions.version, entries.currentVersion))).limit(1);
   return rows[0] ? definitionSchema.parse(rows[0].definition) : undefined;
 });
+
