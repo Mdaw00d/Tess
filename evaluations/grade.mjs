@@ -2,6 +2,8 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
 
+export const evaluationLimitations = ['Four controlled fixtures only; not evidence of general reliability.','Scorer checks known values and source excerpt presence, not general semantic entailment.','One capture per fixture; repeated provider runs and independent review remain necessary.'];
+
 export function gradeCase(fixture, output) {
   const checks = [];
   const record = (name, passed) => checks.push({name,passed:Boolean(passed)});
@@ -37,7 +39,7 @@ export async function evaluateFile(inputPath, reportPath) {
   if (new Set(ids).size !== ids.length) throw new Error('Duplicate fixture outputs.');
   if (ids.length !== fixtures.length || fixtures.some(fixture => !ids.includes(fixture.id))) throw new Error('Capture must contain exactly one output per fixture.');
   const cases = fixtures.map(fixture => ({...gradeCase(fixture,captured.outputs.find(output => output.fixtureId === fixture.id)),input:fixture.input,output:captured.outputs.find(output => output.fixtureId === fixture.id)}));
-  const report = {skillSlug:'document-extraction',definitionVersion:captured.definitionVersion,provider:captured.provider,model:captured.model,method:captured.method,configuration:captured.configuration ?? {},executedAt:captured.executedAt,reviewedAt:new Date().toISOString(),captureSha256:createHash('sha256').update(raw).digest('hex'),fixturesSha256:createHash('sha256').update(fixturesRaw).digest('hex'),passed:cases.every(item => item.passed),cases,limitations:['Four controlled fixtures only; not evidence of general reliability.','Scorer checks known values and source excerpt presence, not general semantic entailment.','One capture per fixture; repeated provider runs and independent review remain necessary.']};
+  const report = {skillSlug:'document-extraction',definitionVersion:captured.definitionVersion,provider:captured.provider,model:captured.model,method:captured.method,configuration:captured.configuration ?? {},executedAt:captured.executedAt,reviewedAt:new Date().toISOString(),captureSha256:createHash('sha256').update(raw).digest('hex'),fixturesSha256:createHash('sha256').update(fixturesRaw).digest('hex'),passed:cases.every(item => item.passed),cases,limitations:evaluationLimitations};
   await writeFile(reportPath,JSON.stringify(report,null,2)+'\n',{flag:'wx'});
   return report;
 }

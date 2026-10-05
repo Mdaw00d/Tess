@@ -13,7 +13,8 @@
     "db:seed": "tsx db/seed.ts",
     "test:smoke": "node scripts/smoke.mjs",
     "eval:grade": "node evaluations/grade.mjs",
-    "test:eval": "node --test evaluations/grade.test.mjs",
+    "test:eval": "node --test evaluations/grade.test.mjs evaluations/verify.test.mjs",
+    "eval:record": "node evaluations/record.mjs",
     "test:db": "tsx db/check.ts"
   },
   "keywords": [],
