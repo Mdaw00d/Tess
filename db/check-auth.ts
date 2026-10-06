@@ -7,6 +7,7 @@ import { eq } from 'drizzle-orm';
 import { betterAuth } from 'better-auth/minimal';
 import { drizzleAdapter } from '@better-auth/drizzle-adapter';
 import { authOptions } from '../lib/auth-options';
+import { passwordSetupError, newPasswordSchema } from '../lib/password-validation';
 import * as schema from './auth-schema';
 
 const secret=randomBytes(32).toString('base64');
@@ -14,6 +15,8 @@ const env={BETTER_AUTH_SECRET:secret,GOOGLE_CLIENT_ID:'test-client.apps.googleus
 assert.equal(authOptions({...env,BETTER_AUTH_SECRET:''}),null);
 assert.equal(authOptions({...env,BETTER_AUTH_URL:'https://example.com/unexpected-path'}),null);
 assert.equal(authOptions({...env,BETTER_AUTH_URL:'http://example.com'}),null);
+assert.ok(authOptions({...env,GOOGLE_CLIENT_ID:undefined,GOOGLE_CLIENT_SECRET:undefined})?.emailAndPassword?.enabled);
+assert.equal(newPasswordSchema.safeParse({password:'A-long-password-123',confirmPassword:'different'}).success,false);
 const client=await PGlite.create();
 const db=drizzle(client,{schema});
 try {
@@ -21,6 +24,28 @@ try {
   const options=authOptions(env)!;
   const auth=betterAuth({...options,database:drizzleAdapter(db,{provider:'pg',schema})});
   const request=(path:string,init?:RequestInit)=>auth.handler(new Request(`http://127.0.0.1:3000/api/auth${path}`,init));
+  const post=(path:string,body:object,cookie?:string)=>request(path,{method:'POST',headers:{'Content-Type':'application/json',Origin:env.BETTER_AUTH_URL,...(cookie?{cookie}:{})},body:JSON.stringify(body)});
+  const password='Test-only-'+randomBytes(16).toString('hex');
+  assert.equal((await post('/sign-up/email',{name:'Email test',email:'email@example.invalid',password:'short'})).status,400);
+  const signup=await post('/sign-up/email',{name:'Email test',email:'email@example.invalid',password});
+  assert.equal(signup.status,200);
+  const signupUser=(await signup.json()).user;
+  assert.equal(signupUser.emailVerified,false,'new email registrations must not claim verified ownership');
+  const signupCookie=signup.headers.getSetCookie().find(value=>value.startsWith('tess.session_token='))!.split(';')[0];
+  assert.equal((await (await request('/get-session',{headers:{cookie:signupCookie}})).json()).user.id,signupUser.id);
+  const [credential]=await db.select().from(schema.account).where(eq(schema.account.userId,signupUser.id));
+  assert.equal(credential.providerId,'credential');assert.ok(credential.password);assert.notEqual(credential.password,password,'database must store a password hash');
+  assert.equal((await post('/sign-in/email',{email:'email@example.invalid',password:'Incorrect-password-123'})).status,401);
+  assert.equal((await post('/sign-in/email',{email:'unknown@example.invalid',password})).status,401);
+  assert.equal((await post('/sign-up/email',{name:'Duplicate',email:'email@example.invalid',password})).status,422);
+  await db.insert(schema.session).values({id:'other-email-session',userId:signupUser.id,token:'other-email-token',expiresAt:new Date(Date.now()+3600000)});
+  const nextPassword='Changed-test-'+randomBytes(16).toString('hex');
+  assert.equal((await post('/change-password',{currentPassword:'wrong-password',newPassword:nextPassword,revokeOtherSessions:true},signupCookie)).status,400);
+  assert.equal((await post('/change-password',{currentPassword:password,newPassword:nextPassword,revokeOtherSessions:true},signupCookie)).status,200);
+  assert.equal((await db.select().from(schema.session).where(eq(schema.session.id,'other-email-session'))).length,0);
+  await post('/sign-out',{},signupCookie);
+  assert.equal((await post('/sign-in/email',{email:'email@example.invalid',password})).status,401);
+  assert.equal((await post('/sign-in/email',{email:'email@example.invalid',password:nextPassword})).status,200);
   assert.equal(await (await request('/get-session')).json(),null);
   assert.equal(await (await request('/get-session',{headers:{cookie:'tess.session_token=forged'}})).json(),null);
   const signIn=await request('/sign-in/social',{method:'POST',headers:{'Content-Type':'application/json',Origin:env.BETTER_AUTH_URL},body:JSON.stringify({provider:'google',callbackURL:'/account'})});
@@ -39,6 +64,16 @@ try {
   const session=await (await request('/get-session',{headers:{cookie}})).json();
   assert.equal(session.user.id,'test-user');
   assert.equal(session.user.email,'test@example.invalid');
+  await assert.rejects(auth.api.setPassword({body:{newPassword:password},headers:new Headers()}),'password setup must require authentication');
+  await db.update(schema.session).set({createdAt:new Date(now.getTime()-1200000)}).where(eq(schema.session.id,'test-session'));
+  assert.equal(passwordSetupError(await auth.api.getSession({headers:new Headers({cookie})})),'Sign out and sign in again before creating a password.');
+  await db.update(schema.session).set({createdAt:now}).where(eq(schema.session.id,'test-session'));
+  assert.equal(passwordSetupError(await auth.api.getSession({headers:new Headers({cookie})})),null);
+  assert.equal((await post('/sign-up/email',{name:'Duplicate Google account',email:'test@example.invalid',password})).status,422,'signup must not take over a Google account');
+  await auth.api.setPassword({body:{newPassword:password},headers:new Headers({cookie})});
+  await assert.rejects(auth.api.setPassword({body:{newPassword:nextPassword},headers:new Headers({cookie})}),'password setup cannot overwrite an existing password');
+  const googleEmailLogin=await post('/sign-in/email',{email:'test@example.invalid',password});
+  assert.equal(googleEmailLogin.status,200);assert.equal((await googleEmailLogin.json()).user.id,'test-user');
   const csrf=await request('/sign-out',{method:'POST',headers:{cookie,'Content-Type':'application/json',Origin:'https://attacker.example'},body:'{}'});
   assert.equal(csrf.status,403,'cross-origin authenticated writes must be rejected');
   const logout=await request('/sign-out',{method:'POST',headers:{cookie,Origin:env.BETTER_AUTH_URL,'Content-Type':'application/json'},body:'{}'});
@@ -50,5 +85,5 @@ try {
   await db.delete(schema.user).where(eq(schema.user.id,'test-user'));
   const {rows}=await client.query<{relrowsecurity:boolean}>("select relrowsecurity from pg_class where relname in ('tess_user','tess_session','tess_account','tess_verification') and relnamespace='public'::regnamespace");
   assert.equal(rows.length,4);assert.ok(rows.every(row=>row.relrowsecurity));
-  console.log('Auth checks passed: Google redirect + PKCE, callback restrictions, CSRF, invalid/expired cookies, session validation, logout revocation, and RLS. No Google account was used.');
+  console.log('Auth checks passed: email signup/login, hashed passwords, duplicate/wrong credential rejection, password changes, Google-account password setup with fresh sessions, OAuth, CSRF, expiry, logout, and RLS. Synthetic test accounts only.');
 } finally {await client.close();}

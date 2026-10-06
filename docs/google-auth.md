@@ -1,6 +1,6 @@
 # Google authentication
 
-Tess uses Better Auth with its Drizzle/PostgreSQL adapter, Google OAuth, and database-backed sessions. Public library routes stay available; /account requires a valid server-checked session. There is no password login or account linking. Auth tables have RLS enabled without anonymous policies. Default Google scopes are identity/profile/email only.
+Tess uses Better Auth with its Drizzle/PostgreSQL adapter, Google OAuth, and database-backed sessions. Public library routes stay available; /account requires a valid server-checked session. Email/password signup and login are also supported. Automatic account linking remains disabled. Auth tables have RLS enabled without anonymous policies. Default Google scopes are identity/profile/email only.
 
 ## Google Cloud setup
 
@@ -20,8 +20,14 @@ For Preview Google login, use an explicit stable Preview hostname, register its 
 
 ## Verification
 
-npm run test:auth runs the real Better Auth handlers and Drizzle adapter against disposable PGlite. It checks OAuth redirect/PKCE, external callback rejection, cookie validation, expiration, logout revocation, origin enforcement, and auth-table RLS. These checks use synthetic records and do not sign in to Google. Finish live verification by signing in with a permitted Google test account, checking /account, signing out, and confirming /account redirects to /sign-in. A real Google flow remains pending until OAuth credentials are configured.
+npm run test:auth runs the real Better Auth handlers and Drizzle adapter against disposable PGlite. It checks email signup/login, password hashing and changes, Google-account password creation, OAuth redirect/PKCE, external callback rejection, cookie validation, expiration, logout revocation, origin enforcement, and auth-table RLS. These checks use synthetic records and do not sign in to Google. The user has confirmed real Google sign-in succeeds on Vercel. To finish the manual session check, open /account, sign out, and confirm /account redirects to /sign-in.
 
 Missing or invalid auth configuration disables Google sign-in with a clear setup message while library browsing stays available. Server secrets are never passed to client components.
 
 References: https://better-auth.com/docs/authentication/google and https://better-auth.com/docs/integrations/next
+
+## Email and password
+
+Users can create an account or sign in with email and their TESS password from /sign-in. Passwords require 12–128 characters and are hashed by Better Auth. Google users can create a separate TESS password from /account after signing in within the last ten minutes. Existing passwords require the current password to change; other sessions are revoked after a change. Duplicate email registrations never overwrite Google or password accounts.
+
+Email verification and emailed password recovery remain pending transactional email setup. New email registrations retain emailVerified=false and get no verified-identity privileges. No reset-email delivery is claimed or shown in the interface.
