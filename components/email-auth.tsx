@@ -4,8 +4,9 @@ import { useRouter } from 'next/navigation';
 import { z } from 'zod';
 import { authClient } from '@/lib/auth-client';
 import { newPasswordSchema } from '@/lib/password-validation';
+import { GoogleSignIn } from '@/components/auth-controls';
 
-export function EmailAuth({enabled}:{enabled:boolean}) {
+export function EmailAuth({enabled,googleEnabled}:{enabled:boolean;googleEnabled:boolean}) {
   const router=useRouter();
   const [mode,setMode]=useState<'sign-in'|'sign-up'>('sign-in');
   const [pending,setPending]=useState(false);const [error,setError]=useState('');const [showPassword,setShowPassword]=useState(false);
@@ -32,6 +33,7 @@ export function EmailAuth({enabled}:{enabled:boolean}) {
       <label>Password<div className="password-input"><input name="password" type={showPassword?'text':'password'} autoComplete={mode==='sign-in'?'current-password':'new-password'} minLength={mode==='sign-up'?12:undefined} maxLength={128} required/><button type="button" aria-label={showPassword?'Hide password':'Show password'} onClick={()=>setShowPassword(!showPassword)}>{showPassword?'Hide':'Show'}</button></div></label>
       {mode==='sign-up'&&<><p className="password-hint">Use 12–128 characters.</p><label>Confirm password<input name="confirmPassword" type="password" autoComplete="new-password" maxLength={128} required/></label></>}
       <button className="button" type="submit">{pending?'Please wait…':mode==='sign-in'?'Sign in with email':'Create account'}</button>
+      <GoogleSignIn enabled={googleEnabled}/>
     </fieldset></form><p role="status" aria-live="polite">{error}</p>
     <button className="auth-switch" disabled={pending} onClick={()=>{setMode(mode==='sign-in'?'sign-up':'sign-in');setError('');setShowPassword(false);}}>{mode==='sign-in'?'New to tess? Create an account':'Already have an account? Sign in'}</button>
   </div>;

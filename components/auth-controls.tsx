@@ -6,7 +6,7 @@ import { authClient } from '@/lib/auth-client';
 export function GoogleSignIn({enabled}:{enabled:boolean}) {
   const [pending,setPending]=useState(false);
   const [error,setError]=useState('');
-  return <><button className="button google-sign-in" disabled={!enabled||pending} onClick={async()=>{
+  return <><button type="button" className="button google-sign-in" disabled={!enabled||pending} onClick={async()=>{
     setPending(true);setError('');
     try {
       const result=await authClient.signIn.social({provider:'google',callbackURL:'/account',errorCallbackURL:'/sign-in?error=oauth'});
