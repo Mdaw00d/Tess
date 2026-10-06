@@ -20,7 +20,7 @@ See docs/evaluation-plan.md for the next capability-evaluation work. Website tes
 
 Production: https://tess-ruddy.vercel.app. Deploy via npx vercel@latest deploy --prod. Set SUPABASE_DATABASE_URL only after migrations and seeding succeed.
 
-Auth, analytics, email, payments, and agent execution remain deferred until their product workflows exist.
+Google authentication is implemented with Better Auth. See docs/google-auth.md for OAuth credentials and activation; npm run test:auth verifies session security. Analytics, email, payments, and agent execution remain deferred.
 
 ## Docker-free checks
 
