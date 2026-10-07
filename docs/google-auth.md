@@ -30,4 +30,4 @@ References: https://better-auth.com/docs/authentication/google and https://bette
 
 Users can create an account or sign in with email and their TESS password from /sign-in. Passwords require 12–128 characters and are hashed by Better Auth. Google users can create a separate TESS password from /account after signing in within the last ten minutes. Existing passwords require the current password to change; other sessions are revoked after a change. Duplicate email registrations never overwrite Google or password accounts.
 
-Email verification and emailed password recovery remain pending transactional email setup. New email registrations retain emailVerified=false and get no verified-identity privileges. No reset-email delivery is claimed or shown in the interface.
+Email verification and password recovery are implemented with Resend. Configure RESEND_API_KEY and RESEND_FROM_EMAIL to activate delivery and required email verification; see email-setup.md. Without these settings, existing login stays available and recovery links remain hidden. New email registrations retain emailVerified=false until verified.

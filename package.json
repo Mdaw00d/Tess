@@ -17,7 +17,8 @@
     "eval:record": "node evaluations/record.mjs",
     "test:db": "tsx db/check.ts",
     "test:auth": "tsx db/check-auth.ts",
-    "test:admin": "tsx db/check-admin.ts"
+    "test:admin": "tsx db/check-admin.ts",
+    "test:email": "tsx db/check-email.ts"
   },
   "keywords": [],
   "author": "",

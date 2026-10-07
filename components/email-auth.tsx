@@ -5,8 +5,9 @@ import { z } from 'zod';
 import { authClient } from '@/lib/auth-client';
 import { newPasswordSchema } from '@/lib/password-validation';
 import { GoogleSignIn } from '@/components/auth-controls';
+import Link from 'next/link';
 
-export function EmailAuth({enabled,googleEnabled}:{enabled:boolean;googleEnabled:boolean}) {
+export function EmailAuth({enabled,googleEnabled,emailEnabled=false}:{enabled:boolean;googleEnabled:boolean;emailEnabled?:boolean}) {
   const router=useRouter();
   const [mode,setMode]=useState<'sign-in'|'sign-up'>('sign-in');
   const [pending,setPending]=useState(false);const [error,setError]=useState('');const [showPassword,setShowPassword]=useState(false);
@@ -23,9 +24,10 @@ export function EmailAuth({enabled,googleEnabled}:{enabled:boolean;googleEnabled
       }else if(!password || password.length>128){setError('Enter your TESS password.');return;}
       setPending(true);
       try {
-        const result=mode==='sign-in'?await authClient.signIn.email({email:email.data,password,callbackURL:'/account'}):await authClient.signUp.email({name:String(form.get('name')??'').trim(),email:email.data,password,callbackURL:'/account'});
+        const result=mode==='sign-in'?await authClient.signIn.email({email:email.data,password,callbackURL:'/account'}):await authClient.signUp.email({name:String(form.get('name')??'').trim(),email:email.data,password,callbackURL:emailEnabled?'/sign-in?notice=verified':'/account'});
+        if(result.error?.code==='EMAIL_NOT_VERIFIED'){router.push('/verify-email');setPending(false);return;}
         if(result.error){setError(mode==='sign-in'?'Email or password is incorrect. If you joined with Google, sign in with Google and create a TESS password from your account.':'Unable to create this account. If you already joined, sign in with email or Google.');setPending(false);return;}
-        router.replace('/account');router.refresh();
+        router.replace(mode==='sign-up'&&emailEnabled?'/verify-email':'/account');router.refresh();
       }catch{setError('Unable to connect. Please try again.');setPending(false);}
     }}><fieldset disabled={!enabled||pending}>
       {mode==='sign-up'&&<label>Name<input name="name" autoComplete="name" maxLength={100} required/></label>}
@@ -36,5 +38,6 @@ export function EmailAuth({enabled,googleEnabled}:{enabled:boolean;googleEnabled
       <GoogleSignIn enabled={googleEnabled}/>
     </fieldset></form><p role="status" aria-live="polite">{error}</p>
     <button className="auth-switch" disabled={pending} onClick={()=>{setMode(mode==='sign-in'?'sign-up':'sign-in');setError('');setShowPassword(false);}}>{mode==='sign-in'?'New to tess? Create an account':'Already have an account? Sign in'}</button>
+    {mode==='sign-in'&&emailEnabled&&<p><Link className="auth-switch" href="/forgot-password">Forgot password?</Link> · <Link className="auth-switch" href="/verify-email">Verify email</Link></p>}
   </div>;
 }

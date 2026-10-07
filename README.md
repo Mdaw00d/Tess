@@ -20,7 +20,7 @@ See docs/evaluation-plan.md for the next capability-evaluation work. Website tes
 
 Production: https://tess-ruddy.vercel.app. Deploy via npx vercel@latest deploy --prod. Set SUPABASE_DATABASE_URL only after migrations and seeding succeed.
 
-Google authentication is implemented with Better Auth. See docs/google-auth.md for OAuth credentials and activation; npm run test:auth verifies session security. Analytics, email, payments, and agent execution remain deferred.
+Google authentication is implemented with Better Auth. See docs/google-auth.md for OAuth credentials and activation; npm run test:auth verifies session security. Resend verification and password recovery are implemented; configure delivery using docs/email-setup.md and check them with npm run test:email. Analytics, payments, and agent execution remain deferred.
 
 The protected /admin panel supports Markdown/JSON uploads, editing, private drafts and previews, immutable version publishing, unpublishing, archiving, and restoring past versions as drafts. Configure the server-only TESS_ADMIN_EMAILS allowlist with a verified sign-in email. See docs/admin.md; npm run test:admin checks the publishing workflows and access policy using disposable PostgreSQL.
 

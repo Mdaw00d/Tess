@@ -1,0 +1,58 @@
+import assert from 'node:assert/strict';
+import { randomBytes } from 'node:crypto';
+import { PGlite } from '@electric-sql/pglite';
+import { drizzle } from 'drizzle-orm/pglite';
+import { migrate } from 'drizzle-orm/pglite/migrator';
+import { eq } from 'drizzle-orm';
+import { betterAuth } from 'better-auth/minimal';
+import { createEmailVerificationToken } from 'better-auth/api';
+import { drizzleAdapter } from '@better-auth/drizzle-adapter';
+import { authOptions } from '../lib/auth-options';
+import { deliverAuthEmail, emailConfig, type AuthEmail } from '../lib/auth-email';
+import * as schema from './auth-schema';
+
+const env={BETTER_AUTH_SECRET:randomBytes(32).toString('hex'),BETTER_AUTH_URL:'http://127.0.0.1:3000',RESEND_API_KEY:'re_synthetic_test_only',RESEND_FROM_EMAIL:'TESS <accounts@example.invalid>'};
+const captured:AuthEmail[]=[];const mail={sendVerificationEmail:async(data:AuthEmail)=>{captured.push(data);},sendResetPassword:async(data:AuthEmail)=>{captured.push(data);}};
+assert.equal(emailConfig({...env,RESEND_API_KEY:''}),null);assert.equal(emailConfig({...env,RESEND_FROM_EMAIL:'invalid sender'}),null);
+assert.equal(authOptions(env)?.emailAndPassword?.requireEmailVerification,false,'missing delivery callback must not lock out existing users');
+assert.equal(authOptions(env,mail)?.emailAndPassword?.requireEmailVerification,true);
+const client=await PGlite.create();const db=drizzle(client,{schema});
+try{
+  await migrate(db,{migrationsFolder:'./db/migrations'});
+  const options=authOptions(env,mail)!;const auth=betterAuth({...options,rateLimit:{enabled:false},database:drizzleAdapter(db,{provider:'pg',schema})});
+  const request=(path:string,init?:RequestInit)=>auth.handler(new Request(`${env.BETTER_AUTH_URL}/api/auth${path}`,init));
+  const post=(path:string,body:object,cookie?:string)=>request(path,{method:'POST',headers:{'Content-Type':'application/json',Origin:env.BETTER_AUTH_URL,...(cookie?{cookie}:{})},body:JSON.stringify(body)});
+  const password='Synthetic-original-'+randomBytes(12).toString('hex');const email='email-check@example.invalid';
+  const signup=await post('/sign-up/email',{name:'Synthetic email test',email,password,callbackURL:'/sign-in?notice=verified'});assert.equal(signup.status,200);assert.ok(!signup.headers.getSetCookie().some(value=>value.startsWith('tess.session_token=')));
+  const [user]=await db.select().from(schema.user).where(eq(schema.user.email,email));assert.equal(user.emailVerified,false);assert.equal(captured.length,1);assert.equal(captured[0].kind,'verification');
+  const unverified=await post('/sign-in/email',{email,password});assert.equal(unverified.status,403);assert.equal((await unverified.json()).code,'EMAIL_NOT_VERIFIED');
+  const unknownResend=await post('/send-verification-email',{email:'unknown@example.invalid',callbackURL:'/sign-in?notice=verified'});assert.equal(unknownResend.status,200);
+  assert.equal((await post('/send-verification-email',{email,callbackURL:'https://attacker.invalid'})).status,403);
+  assert.equal((await request('/verify-email?token=forged')).status,401);
+  const expired=await createEmailVerificationToken(env.BETTER_AUTH_SECRET,email,undefined,-1);assert.equal((await request('/verify-email?token='+expired)).status,401);
+  const verified=await auth.handler(new Request(captured[0].url));assert.equal(verified.status,302);assert.equal((await db.select().from(schema.user).where(eq(schema.user.id,user.id)))[0].emailVerified,true);
+  assert.ok(!verified.headers.getSetCookie().some(value=>value.startsWith('tess.session_token=')),'verification must not create a session');
+  const duplicate=await post('/sign-up/email',{name:'Duplicate',email,password});assert.equal(duplicate.status,200);assert.equal((await db.select().from(schema.user)).length,1,'duplicate signup does not overwrite identity');
+  const login=await post('/sign-in/email',{email,password});assert.equal(login.status,200);const cookie=login.headers.getSetCookie().find(value=>value.startsWith('tess.session_token='))!.split(';')[0];
+  const reset=await post('/request-password-reset',{email,redirectTo:'/reset-password'});assert.equal(reset.status,200);const resetBody=await reset.json();const resetMail=captured.findLast(row=>row.kind==='reset')!;assert.ok(resetMail);
+  const unknown=await post('/request-password-reset',{email:'unknown@example.invalid',redirectTo:'/reset-password'});assert.deepEqual(await unknown.json(),resetBody,'unknown email must get the same reset response');
+  assert.equal((await post('/request-password-reset',{email,redirectTo:'https://attacker.invalid'})).status,403);
+  const callback=await auth.handler(new Request(resetMail.url));assert.equal(callback.status,302);const token=new URL(callback.headers.get('location')!,env.BETTER_AUTH_URL).searchParams.get('token')!;
+  assert.equal((await post('/reset-password',{token,newPassword:'short'})).status,400);
+  assert.equal((await post('/reset-password',{token:'forged',newPassword:password})).status,400);
+  const nextPassword='Synthetic-changed-'+randomBytes(12).toString('hex');assert.equal((await post('/reset-password',{token,newPassword:nextPassword})).status,200);
+  assert.equal(await (await request('/get-session',{headers:{cookie}})).json(),null,'reset revokes existing sessions');
+  assert.equal((await post('/reset-password',{token,newPassword:password})).status,400,'reset token cannot be reused');
+  assert.equal((await post('/sign-in/email',{email,password})).status,401);assert.equal((await post('/sign-in/email',{email,password:nextPassword})).status,200);
+  await post('/request-password-reset',{email,redirectTo:'/reset-password'});const expiryToken=new URL(captured.findLast(row=>row.kind==='reset')!.url).pathname.split('/').at(-1)!;
+  await db.update(schema.verification).set({expiresAt:new Date(Date.now()-1000)}).where(eq(schema.verification.identifier,`reset-password:${expiryToken}`));
+  assert.equal((await post('/reset-password',{token:expiryToken,newPassword:password})).status,400,'expired reset rejected');
+  let delivery:RequestInit|undefined;
+  await deliverAuthEmail(env,resetMail,async(url,init)=>{assert.equal(url,'https://api.resend.com/emails');delivery=init;return new Response('{}',{status:200});});
+  assert.ok(delivery);const body=JSON.parse(String(delivery.body));assert.deepEqual(body.to,[email]);assert.ok(body.html.includes('Reset password'));assert.ok(body.text.includes(resetMail.url));assert.ok(!body.text.includes(nextPassword));
+  await assert.rejects(deliverAuthEmail(env,resetMail,async()=>new Response('{}',{status:401})),/AUTH_EMAIL_DELIVERY_FAILED/);
+  await assert.rejects(deliverAuthEmail(env,{...resetMail,url:'https://attacker.invalid/token'}),/INVALID_AUTH_EMAIL/);
+  const limited=betterAuth({...options,database:drizzleAdapter(db,{provider:'pg',schema})});
+  for(let index=0;index<4;index++){const result=await limited.handler(new Request(`${env.BETTER_AUTH_URL}/api/auth/request-password-reset`,{method:'POST',headers:{'Content-Type':'application/json',Origin:env.BETTER_AUTH_URL,'x-forwarded-for':'192.0.2.99'},body:JSON.stringify({email:'unknown@example.invalid',redirectTo:'/reset-password'})}));assert.equal(result.status,index<3?200:429);}
+  console.log('Email checks passed: unverified login blocked, verification/expiry, duplicate protection, generic reset responses, origin checks, single-use and expired reset tokens, session revocation, hashed password login, rate limits, and Resend payload/failure handling. No real emails sent.');
+}finally{await client.close();}
