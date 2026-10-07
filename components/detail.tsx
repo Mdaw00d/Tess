@@ -13,11 +13,16 @@ export async function Detail({item}:{item:Definition}) {
     <Link className="back" href={`/${item.kind}s`}>← All {item.kind}s</Link>
     <div className="eyebrow">{item.category.toUpperCase()} / {item.kind.toUpperCase()} / V{item.version}</div>
     <h1>{item.name}</h1><p className="intro">{item.description}</p>
-    <div className="notice">Draft · {status} · Example definition</div>
+    <div className="notice">{status} · Version {item.version}</div>
     <div className="detail-layout"><article>
       <h2>When to use it</h2><p>Use this {item.kind} when you need to {item.description.charAt(0).toLowerCase()+item.description.slice(1)}</p>
       <div className="io"><div><h2>Inputs</h2><ul>{item.inputs.map(s=><li key={s}>{s}</li>)}</ul></div><div><h2>Outputs</h2><ul>{item.outputs.map(s=><li key={s}>{s}</li>)}</ul></div></div>
       <h2>{item.kind==='loop'?'Stages & termination':'Process'}</h2><ol className="process">{item.stages.map(s=><li key={s}>{s}</li>)}</ol>
+      {item.instructions&&<><h2>Instructions</h2><pre>{item.instructions}</pre></>}
+      {item.tools&&<><h2>Required tools</h2><p className="definition-text">{item.tools}</p></>}
+      {item.conditions&&<><h2>Conditions</h2><p className="definition-text">{item.conditions}</p></>}
+      {item.termination&&<><h2>Termination criteria</h2><p className="definition-text">{item.termination}</p></>}
+      {item.examples&&<><h2>Examples</h2><pre>{item.examples}</pre></>}
       <h2>Evaluation & known limitations</h2><p>{limitations}</p>
       <p>{currentRecords.length ? 'Evaluation records exist for this version. Review their results and limitations before drawing conclusions about reliability.' : `No evaluation records for v${item.version}. This definition describes intended behavior; it does not establish reliability.`}</p>
       <h3>Evaluation history</h3>
@@ -31,6 +36,6 @@ export async function Detail({item}:{item:Definition}) {
       <h2>Example composition</h2><p>{item.kind==='skill'?'Provide the listed inputs, run the process, and review the outputs within the related loop.':'Apply this pattern to the related skill, evaluate each result, and stop at the documented limit.'}</p>
       {related&&<Link className="related" href={`/${related.kind}s/${related.slug}`}>{related.name} ↗</Link>}
       <h2>Reuse this definition</h2><Copy text={text}/><pre>{text}</pre>
-    </article><aside><span>DEFINITION AT A GLANCE</span><dl><dt>Type</dt><dd>{item.kind}</dd><dt>Version</dt><dd>{item.version}</dd><dt>Evaluation</dt><dd>{status}</dd><dt>Requirements</dt><dd>{item.slug==='source-research'?'Source search and retrieval':'Text input and structured output'}</dd></dl><p>Inspect and adapt this draft before using it in a production workflow.</p></aside></div>
+    </article><aside><span>DEFINITION AT A GLANCE</span><dl><dt>Type</dt><dd>{item.kind}</dd><dt>Version</dt><dd>{item.version}</dd><dt>Evaluation</dt><dd>{status}</dd><dt>Requirements</dt><dd>{item.tools??(item.slug==='source-research'?'Source search and retrieval':'Text input and structured output')}</dd></dl><p>Review the definition and its evidence before using it in a production workflow.</p></aside></div>
   </section>;
 }

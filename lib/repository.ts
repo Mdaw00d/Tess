@@ -25,7 +25,7 @@ export async function listDefinitions(kind?: Definition['kind'], query = '', cat
     (category === 'All' || item.category === category) &&
     `${item.name} ${item.description} ${item.category}`.toLowerCase().includes(query.toLowerCase()));
 
-  const conditions = [eq(versions.version, entries.currentVersion)];
+  const conditions = [eq(versions.version, entries.currentVersion),eq(entries.publicationStatus,'published')];
   if (kind) conditions.push(eq(entries.kind, kind));
   if (category !== 'All') conditions.push(sql`${versions.definition}->>'category' = ${category}`);
   if (query.trim()) conditions.push(sql`to_tsvector('english', ${entries.name} || ' ' || ${entries.description}) @@ websearch_to_tsquery('english', ${query})`);
@@ -41,7 +41,7 @@ export const getDefinition = cache(async (slug: string) => {
   if (!db) return definitions.find(item => item.slug === slug);
   const rows = await db.select({ definition: versions.definition, evaluationCount: recordedCount }).from(entries)
     .innerJoin(versions, eq(versions.entryId, entries.id))
-    .where(and(eq(entries.slug, slug), eq(versions.version, entries.currentVersion))).limit(1);
+    .where(and(eq(entries.slug, slug),eq(entries.publicationStatus,'published'), eq(versions.version, entries.currentVersion))).limit(1);
   return rows[0] ? { ...definitionSchema.parse(rows[0].definition), evaluationCount: rows[0].evaluationCount } : undefined;
 });
 

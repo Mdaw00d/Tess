@@ -22,6 +22,8 @@ Production: https://tess-ruddy.vercel.app. Deploy via npx vercel@latest deploy -
 
 Google authentication is implemented with Better Auth. See docs/google-auth.md for OAuth credentials and activation; npm run test:auth verifies session security. Analytics, email, payments, and agent execution remain deferred.
 
+The protected /admin panel supports Markdown/JSON uploads, editing, private drafts and previews, immutable version publishing, unpublishing, archiving, and restoring past versions as drafts. Configure the server-only TESS_ADMIN_EMAILS allowlist with a verified sign-in email. See docs/admin.md; npm run test:admin checks the publishing workflows and access policy using disposable PostgreSQL.
+
 ## Docker-free checks
 
 Run npm run test:db for disposable in-memory PostgreSQL checks using the development-only PGlite dependency. It runs the actual migrations and shared seed function. No Docker, database service, port, credentials, or persisted database files are required. Production continues to use Supabase/PostgreSQL through postgres-js.

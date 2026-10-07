@@ -16,7 +16,8 @@
     "test:eval": "node --test evaluations/grade.test.mjs evaluations/verify.test.mjs",
     "eval:record": "node evaluations/record.mjs",
     "test:db": "tsx db/check.ts",
-    "test:auth": "tsx db/check-auth.ts"
+    "test:auth": "tsx db/check-auth.ts",
+    "test:admin": "tsx db/check-admin.ts"
   },
   "keywords": [],
   "author": "",

@@ -15,6 +15,20 @@
       "when": 1791303544013,
       "tag": "0001_greedy_sharon_carter",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791365373513,
+      "tag": "0002_pink_pete_wisdom",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791365506997,
+      "tag": "0003_sweet_dormammu",
+      "breakpoints": true
     }
   ]
 }
