@@ -7,14 +7,28 @@ import { track, resetAnalytics } from '@/lib/analytics';
 export function GoogleSignIn({enabled}:{enabled:boolean}) {
   const [pending,setPending]=useState(false);
   const [error,setError]=useState('');
+  const [googleUrl,setGoogleUrl]=useState('');
   return <><button type="button" className="button google-sign-in" disabled={!enabled||pending} onClick={async()=>{
-    setPending(true);setError('');
+    setPending(true);setError('');setGoogleUrl('');
+    const controller=new AbortController();
+    const timer=setTimeout(()=>controller.abort(),15000);
     try {
       track('auth_started',{method:'google',mode:'sign-in'});
-      const result=await authClient.signIn.social({provider:'google',callbackURL:'/account',errorCallbackURL:'/sign-in?error=oauth'});
-      if(result.error){setError('Unable to start Google sign-in. Please try again.');setPending(false);}
-    }catch{setError('Unable to connect. Please try again.');setPending(false);}
-  }}><span aria-hidden="true">G</span>{pending?'Connecting…':'Continue with Google'}</button><p role="status" aria-live="polite">{error}</p></>;
+      const result=await authClient.signIn.social(
+        {provider:'google',callbackURL:'/account',errorCallbackURL:'/sign-in?error=oauth',disableRedirect:true},
+        {signal:controller.signal,timeout:15000},
+      );
+      if(result.error||!result.data?.url)throw new Error('SIGN_IN_FAILED');
+      const destination=new URL(result.data.url);
+      if(destination.protocol!=='https:'||destination.hostname!=='accounts.google.com')throw new Error('INVALID_GOOGLE_URL');
+      setGoogleUrl(destination.href);
+      window.location.assign(destination.href);
+    }catch{
+      setError(controller.signal.aborted?'Google sign-in timed out. Please try again.':'Unable to start Google sign-in. Please try again.');
+    }finally{clearTimeout(timer);setPending(false);}
+  }}><span aria-hidden="true">G</span>{pending?'Connecting…':'Continue with Google'}</button>
+  {googleUrl&&<a className="auth-switch" href={googleUrl}>Open Google sign-in</a>}
+  <p role="status" aria-live="polite">{error}</p></>;
 }
 export function SignOut() {
   const router=useRouter();const [pending,setPending]=useState(false);const [error,setError]=useState('');
