@@ -35,7 +35,7 @@ export async function Detail({item}:{item:Definition}) {
       </section>)}
       <h2>Example composition</h2><p>{item.kind==='skill'?'Provide the listed inputs, run the process, and review the outputs within the related loop.':'Apply this pattern to the related skill, evaluate each result, and stop at the documented limit.'}</p>
       {related&&<Link className="related" href={`/${related.kind}s/${related.slug}`}>{related.name} ↗</Link>}
-      <h2>Reuse this definition</h2><Copy text={text}/><pre>{text}</pre>
+      <h2>Reuse this definition</h2><Copy text={text} kind={item.kind} slug={item.slug} version={item.version}/><pre>{text}</pre>
     </article><aside><span>DEFINITION AT A GLANCE</span><dl><dt>Type</dt><dd>{item.kind}</dd><dt>Version</dt><dd>{item.version}</dd><dt>Evaluation</dt><dd>{status}</dd><dt>Requirements</dt><dd>{item.tools??(item.slug==='source-research'?'Source search and retrieval':'Text input and structured output')}</dd></dl><p>Review the definition and its evidence before using it in a production workflow.</p></aside></div>
   </section>;
 }

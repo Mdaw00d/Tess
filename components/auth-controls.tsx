@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { authClient } from '@/lib/auth-client';
+import { track, resetAnalytics } from '@/lib/analytics';
 
 export function GoogleSignIn({enabled}:{enabled:boolean}) {
   const [pending,setPending]=useState(false);
@@ -9,6 +10,7 @@ export function GoogleSignIn({enabled}:{enabled:boolean}) {
   return <><button type="button" className="button google-sign-in" disabled={!enabled||pending} onClick={async()=>{
     setPending(true);setError('');
     try {
+      track('auth_started',{method:'google',mode:'sign-in'});
       const result=await authClient.signIn.social({provider:'google',callbackURL:'/account',errorCallbackURL:'/sign-in?error=oauth'});
       if(result.error){setError('Unable to start Google sign-in. Please try again.');setPending(false);}
     }catch{setError('Unable to connect. Please try again.');setPending(false);}
@@ -18,7 +20,7 @@ export function SignOut() {
   const router=useRouter();const [pending,setPending]=useState(false);const [error,setError]=useState('');
   return <><button className="button secondary" disabled={pending} onClick={async()=>{
     setPending(true);setError('');
-    try {const result=await authClient.signOut();if(result.error)throw new Error();router.replace('/sign-in');router.refresh();}
+    try {const result=await authClient.signOut();if(result.error)throw new Error();track('signed_out');resetAnalytics();router.replace('/sign-in');router.refresh();}
     catch{setError('Unable to sign out. Please try again.');setPending(false);}
   }}>{pending?'Signing out…':'Sign out'}</button><p role="status" aria-live="polite">{error}</p></>;
 }
