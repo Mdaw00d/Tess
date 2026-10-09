@@ -4,6 +4,7 @@ import { Card } from '@/components/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ProductPreview } from '@/components/product-preview';
+import { Logo } from '@/components/logo';
 import { listDefinitions } from '@/lib/repository';
 export const dynamic='force-dynamic';
 export default async function Home(){
@@ -18,5 +19,5 @@ export default async function Home(){
  {icon:Layers3,title:'Designed for composition',description:'Start with a small piece. Combine it with others to build a complete workflow.'}
  ].map(({icon:Icon,title,description})=><div key={title}><span className="principle-icon"><Icon size={18}/></span><h3>{title}</h3><p>{description}</p></div>)}</section>
  <section className="library-section"><div className="section-heading"><div><div className="eyebrow">START WITH A SKILL</div><h2>Your next building block.</h2><p>A few pieces from the tess library.</p></div><Link className="button secondary" href="/skills">Browse all skills <ArrowRight size={15}/></Link></div><div className="grid">{definitions.filter(x=>x.kind==='skill').slice(0,3).map(item=><Card key={item.slug} item={item}/>)}</div></section>
- <section className="future"><div><Badge>THE LARGER PICTURE</Badge><h2>Good pieces become<br/>thoughtful products.</h2><p>A job-hunting agent is the first planned product powered by tess.<br/>The foundation is reusable. The possibilities keep growing.</p><Link className="button secondary" href="/about">Meet the philosophy <ArrowUpRight size={15}/></Link></div><div className="tessellation" aria-hidden="true">{['✳','↗','↻','◇'].map((mark,i)=><span key={i}>{mark}</span>)}</div></section></div></>;
+ <section className="future"><div><Badge>THE LARGER PICTURE</Badge><h2>Good pieces become<br/>thoughtful products.</h2><p>A job-hunting agent is the first planned product powered by tess.<br/>The foundation is reusable. The possibilities keep growing.</p><Link className="button secondary" href="/about">Meet the philosophy <ArrowUpRight size={15}/></Link></div><div className="tessellation" aria-hidden="true">{['brand','↗','↻','◇'].map((mark,i)=><span key={i}>{mark==='brand'?<Logo mark/>:mark}</span>)}</div></section></div></>;
 }
