@@ -26,11 +26,11 @@ export function EmailAuth({enabled,googleEnabled,emailEnabled=false}:{enabled:bo
       setPending(true);
       try {
         track('auth_started',{method:'email',mode});
-        const result=mode==='sign-in'?await authClient.signIn.email({email:email.data,password,callbackURL:'/account'}):await authClient.signUp.email({name:String(form.get('name')??'').trim(),email:email.data,password,callbackURL:emailEnabled?'/sign-in?notice=verified':'/account'});
+        const result=mode==='sign-in'?await authClient.signIn.email({email:email.data,password,callbackURL:'/'}):await authClient.signUp.email({name:String(form.get('name')??'').trim(),email:email.data,password,callbackURL:emailEnabled?'/sign-in?notice=verified':'/'});
         if(result.error?.code==='EMAIL_NOT_VERIFIED'){router.push('/verify-email');setPending(false);return;}
-        if(result.error){setError(mode==='sign-in'?'Email or password is incorrect. If you joined with Google, sign in with Google and create a TESS password from your account.':'Unable to create this account. If you already joined, sign in with email or Google.');setPending(false);return;}
+        if(result.error){setError(mode==='sign-in'?'Email or password is incorrect. If you joined with Google, sign in with Google and create a TESS password in Settings.':'Unable to create this account. If you already joined, sign in with email or Google.');setPending(false);return;}
         if(mode==='sign-up')track('account_created',{method:'email',verification_required:emailEnabled});
-        router.replace(mode==='sign-up'&&emailEnabled?'/verify-email':'/account');router.refresh();
+        router.replace(mode==='sign-up'&&emailEnabled?'/verify-email':'/');router.refresh();
       }catch{setError('Unable to connect. Please try again.');setPending(false);}
     }}><fieldset disabled={!enabled||pending}>
       {mode==='sign-up'&&<label>Name<input name="name" autoComplete="name" maxLength={100} required/></label>}

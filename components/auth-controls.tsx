@@ -15,7 +15,7 @@ export function GoogleSignIn({enabled}:{enabled:boolean}) {
     try {
       track('auth_started',{method:'google',mode:'sign-in'});
       const result=await authClient.signIn.social(
-        {provider:'google',callbackURL:'/account',errorCallbackURL:'/sign-in?error=oauth',disableRedirect:true},
+        {provider:'google',callbackURL:'/',errorCallbackURL:'/sign-in?error=oauth',disableRedirect:true},
         {signal:controller.signal,timeout:15000},
       );
       if(result.error||!result.data?.url)throw new Error('SIGN_IN_FAILED');

@@ -8,7 +8,7 @@ export const metadata={title:'Sign in — tess'};
 export const dynamic='force-dynamic';
 export default async function SignIn({searchParams}:{searchParams:Promise<{error?:string;notice?:string}>}){
   const auth=getAuth();
-  if(auth && await auth.api.getSession({headers:await headers()}))redirect('/account');
+  if(auth && await auth.api.getSession({headers:await headers()}))redirect('/');
   const {error,notice}=await searchParams;
   const googleEnabled=Boolean(auth && process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
   return <section className="page-shell auth-page">
